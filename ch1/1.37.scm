@@ -1,0 +1,22 @@
+(define (cont-frac-rec n d k)
+  (define (iter i)
+    (if (= i k) (/ (n k) (d k))
+      (/ (n i) (+ (d i) (iter (+ i 1))))
+    )
+  )
+  (iter 1)
+)
+
+(define (cont-frac-iter n d k)
+  (define (iter i result)
+    (if (= i 0) result
+      (let ((next (- i 1)))
+        (iter next (/ (n i) (+ (d i) result)))
+      )
+    )
+  )
+  (iter (- k 1) (/ (n k) (d k)))
+)
+
+; (display (cont-frac-rec (lambda (i) 1.0) (lambda (i) 1.0) 100))(newline)
+; (display (cont-frac-iter (lambda (i) 1.0) (lambda (i) 1.0) 10))(newline)
