@@ -4,3 +4,5 @@
   (display "inc")(newline)
   (+ x 1)
 )
+
+(define (square x) (* x x))
