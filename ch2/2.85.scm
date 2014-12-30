@@ -15,6 +15,14 @@
 (define (angle z) (apply-generic 'angle z))
 (define (equ x y) (apply-generic 'equ x y))
 (define (zero? x) (apply-generic 'zero? x))
+(define (raise x) (apply-generic 'raise x))
+(define (project x) (apply-generic 'project x))
+
+(define (drop x)
+  (let ((t (type-tag x)) (ct (contents x)))
+    (if (and (eq? t 'scheme-number) (exact-integer? ct)))
+  )
+)
 
 (define (apply-generic op . args)
   (let*
@@ -60,10 +68,30 @@
     (put 'equ (list t t) =)
     (put 'zero? (list t) (lambda (x) (= x 0)))
     (put 'make t (lambda (x) (tag x)))
+    ; int -> rat; float -> complex
+    (put 'raise (list t) (lambda (x) (if (exact-integer? x) (make-rat x 1) (make-complex-from-real-imag x 0))))
+    ; project real->rat(round numer/denom)
+    (put 'project (list t)
+      (lambda (x)
+        (define eps 0.001)
+        (define (try-rat nd)
+          (let ((n (car nd)) (d (cadr nd)))
+            (if (< (abs (/ (- n (round n)) n)) eps)
+              (list (inexact->exact (round n)) d)
+              (try-rat (list (* 10 n) (* 10 d)))
+            )
+          )
+        )
+        (cond
+          ((exact-integer? x) x)
+          ((= x 0) (make-rat 0 1))
+          (else (let ((nd (try-rat (list x 1)))) (make-rat (car nd) (cadr nd))))
+        )
+      )
+    )
   )
   'done
 )
-(define make-scheme-number (get 'make 'scheme-number))
 
 ;; rational
 (define (install-rational-package)
@@ -111,10 +139,13 @@
     (put 'equ (list t t) (lambda (x y) (and (equ (numer x) (numer y)) (equ (denom x) (denom y)))))
     (put 'zero? (list t) (lambda (x) (zero? (numer x))))
     (put 'make t (lambda (n d) (tag (make-rat n d))))
+    ; rat -> real
+    (put 'raise (list t) (lambda (x) (make-scheme-number (exact->inexact (/ (numer x) (denom x))))))
+    ; rat -> int
+    (put 'project(lambda (x) (make-scheme-number (round (/ (number x) (denom x))))))
   )
   'done
 )
-(define (make-rat n d) ((get 'make 'rational) n d))
 
 ; complex
 ; rectangular
@@ -218,11 +249,11 @@
     (put 'angle (list t) angle)
     (put 'equ (list t t) equ)
     (put 'zero? (list t) zero?)
+    ; complex -> real
+    (put 'project (list t)(lambda (z) (make-scheme-number (exact->inexact (real-part z)))))
   )
   'done
 )
-(define (make-complex-from-real-imag r i) ((get 'make-from-real-imag 'complex) r i))
-(define (make-complex-from-mag-ang r a) ((get 'make-from-mag-ang 'complex) r a))
 
 ; test
 (install-scheme-number-package)
@@ -230,18 +261,13 @@
 (install-rectangualr-package)
 (install-polar-package)
 (install-complex-package)
+; later export or will be #f
+(define make-scheme-number (get 'make 'scheme-number))
+(define (make-rat n d) ((get 'make 'rational) n d))
+(define (make-complex-from-real-imag r i) ((get 'make-from-real-imag 'complex) r i))
+(define (make-complex-from-mag-ang r a) ((get 'make-from-mag-ang 'complex) r a))
 
-; (define z1 (make-complex-from-real-imag 3 4))
-; (display z1)(newline)
-; (display (magnitude z1))(newline)
-; (display (angle z1))(newline)
-; (define z2 (make-complex-from-real-imag 7 24))
-; (display (mul z1 z2))(newline)
-; (define z3 (make-complex-from-real-imag 7 24))
-; (display (equ z1 z2))(newline)
-; (display (equ z3 z2))(newline)
-; (display (equ (make-rat 3 4) (make-rat 6 8)))(newline)
-; (display (zero? 0))(newline)
-; (display (zero? (make-rat 0 3)))(newline)
-; (display (zero? (make-complex-from-real-imag 0 0)))(newline)
-; (display (zero? (make-complex-from-mag-ang 0 9)))(newline)
+; (display (raise (make-scheme-number 3)))(newline)
+; (display (raise (make-scheme-number 3.14)))(newline)
+; (display (raise (make-rat 3 4)))(newline)
+; (display (raise (make-rat 6 3)))(newline)
