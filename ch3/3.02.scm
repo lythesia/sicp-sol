@@ -1,0 +1,26 @@
+(define (make-monitored f)
+  (let ((count 0))
+    (lambda (arg)
+      (if (symbol? arg)
+        (cond
+          ((eq? 'how-many-calls? arg) count)
+          ((eq? 'reset-count arg) (set! count 0))
+          (else (error "Illegal operation -- inner MAKE-MONITORED" arg))
+        )
+        (begin
+          (set! count (1+ count))
+          (f arg)
+        )
+      )
+    )
+  )
+)
+
+; test
+; (define s (make-monitored sqrt))
+; (display (s 100))(newline)
+; (display (s 'how-many-calls?))(newline)
+; (display (s 9))(newline)
+; (display (s 'how-many-calls?))(newline)
+; (s 'reset-count)
+; (display (s 'how-many-calls?))(newline)
