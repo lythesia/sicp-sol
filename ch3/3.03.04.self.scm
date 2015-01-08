@@ -1,0 +1,8 @@
+(define (gate-generic proc gate-delay output . args)
+  (define (gate-action-proc)
+    (let ((new-val (apply proc (map get-signal args))))
+      (after-delay gate-delay (lambda () (set-signal! output new-val)))
+    )
+  )
+  (map (lambda (a) (add-action! a gate-action-proc)) args)
+)
