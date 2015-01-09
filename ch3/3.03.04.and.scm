@@ -1,9 +1,13 @@
 (define (and-gate a1 a2 output)
   (define (and-action-proc)
     (let ((new-val (logical-and (get-signal a1) (get-signal a2))))
+      ; (display "(and) setout add to agenda[")(display (+ (current-time the-agenda) and-gate-delay))(display "]")(newline)
+      ; (after-delay and-gate-delay (cons "(and) set out-val" (lambda () (display "and-result: ")(display new-val)(newline)(set-signal! output new-val))))
       (after-delay and-gate-delay (lambda () (set-signal! output new-val)))
     )
   )
+  ; (add-action! a1 (cons "and-action" and-action-proc))
+  ; (add-action! a2 (cons "and-action" and-action-proc))
   (add-action! a1 and-action-proc)
   (add-action! a2 and-action-proc)
   'and
