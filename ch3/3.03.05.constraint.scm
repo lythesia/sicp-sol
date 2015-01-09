@@ -64,7 +64,7 @@
     (cond
       ((eq? request 'have-value) (process-new-value))
       ((eq? request 'lost-value) (process-forget-value))
-      (else (error "Unknown request -- ADDER" request))
+      (else (error "Unknown request -- MULTIPLIER" request))
     )
   )
 
