@@ -1,0 +1,58 @@
+(load "3.04.02.mutex.scm")
+
+(define (counter)
+  (let ((i 0))
+    (lambda () (set! i (1+ i)) i)
+  )
+)
+
+(define gen-acc-id (counter))
+
+(define (make-account balance)
+  (let ((id (gen-acc-id)))
+    (define (withdraw amount)
+      (if (>= balance amount)
+        (begin (set! balance (- balance amount)) balance)
+        "Not enough balance."
+      )
+    )
+    (define (deposit amount)
+      (set! balance (+ balance amount))
+      balance
+    )
+    (let (balance-serializer (make-serializer))
+      (define (dispatch m)
+        (cond
+          ((eq? m 'withdraw) withdraw)
+          ((eq? m 'deposit) deposit)
+          ((eq? m 'balance) balance)
+          ((eq? m 'serializer) balance-serializer)
+          ((eq? m 'id) id)
+          (else (error "Unknown operation -- MAKE-ACCOUNT" m))
+        )
+      )
+      dispatch
+    )
+  )
+)
+
+(define (exchange acc-1 acc-2)
+  (let ((diff (- (acc-1 'balance) (acc-2 'balance))))
+    ((acc-1 'withdraw) diff)
+    ((acc-2 'deposit) diff)
+  )
+)
+
+(define (serialized-idorder-exchange smaller-acc greater-acc)
+  (let ((smaller-serializer (smaller-acc 'serializer)) (greater-serializer (greater-acc 'serializer)))
+    ((greater-serializer (smaller-serializer exchange)) smaller-acc greater-acc)
+  )
+)
+
+; key-point: ensure the order to access same lock (since exchange operation does not care the order)
+(define (serialized-exchange acc-1 acc-2)
+  (if (< (acc-1 'id) (acc-2 'id))
+    (serialized-idorder-exchange acc-1 acc-2)
+    (serialized-idorder-exchange acc-2 acc-1)
+  )
+)
