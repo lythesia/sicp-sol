@@ -44,10 +44,18 @@
     (begin (proc (stream-car s)) (stream-for-each proc (stream-cdr s)))
   )
 )
+(define (stream-iter-to proc s to)
+  (if (or (empty-stream? s) (zero? to)) 'done
+    (begin (proc (stream-car s)) (stream-iter-to proc (stream-cdr s) (1- to)))
+  )
+)
 
 ; display
 (define (display-stream s)
   (stream-for-each display-line s)
+)
+(define (display-stream-to s to)
+  (stream-iter-to display-line s to)
 )
 (define (display-line x) (newline)(display x))
 
