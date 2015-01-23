@@ -49,6 +49,16 @@
     (begin (proc (stream-car s)) (stream-iter-to proc (stream-cdr s) (1- to)))
   )
 )
+(define (stream-head s n)
+  (if (empty-stream? s)
+    'done
+    (begin (newline)
+       (display (stream-car s))
+       (if (> n 1) (stream-head (stream-cdr s) (- n 1)))
+    )
+  )
+)
+
 
 ; display
 (define (display-stream s)

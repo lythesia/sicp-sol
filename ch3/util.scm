@@ -12,3 +12,7 @@
   )
   (loop l)
 )
+
+(define (average . args)
+  (/ (fold + 0 args) (length args))
+)

@@ -36,3 +36,24 @@
   (iter primes) ; with assumption: $p_{n+1} \le p_{n}^{2}$
 )
 (define (divisible? x y) (zero? (remainder x y)))
+
+; interleave pick elements among each stream
+(define (interleave s1 s2)
+  (if (empty-stream? s1) 
+    s2
+    (cons-stream
+      (stream-car s1) ; pick from s1
+      (interleave s2 (stream-cdr s1)) ; ; swap s1 <--> s2
+    )
+  )
+)
+
+(define (interleave-s . streams)
+  (if (= (length streams) 2)
+    (apply interleave streams)
+    (interleave
+      (car streams)
+      (apply interleave-s (cdr streams))
+    )
+  ) 
+)
