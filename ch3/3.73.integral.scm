@@ -1,5 +1,5 @@
 (load "3.05.01.stream.scm")
-(load "3.50.scm") ; for scale
+(load "3.50.scm") ; generic map
 (load "3.05.02.is.scm") ; add-streams
 
 (define (integral integrand initial-value dt)
