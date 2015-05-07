@@ -84,7 +84,7 @@
 )
 
 ;; apply
-(define apply procedure arguments
+(define (apply procedure arguments)
   (cond
     ; simple
     ((primitive-procedure? procedure) (apply-primitive-procedure procedure arguments))
