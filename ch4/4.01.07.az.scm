@@ -1,5 +1,11 @@
 ;; using analyze transform exp to a procedure that can take env to evaluate!
 
+; (load "4.01.03.env.scm")
+; (load "4.01.04.init.scm")
+
+;; using scheme's apply
+; (define apply-in-underlying-scheme apply)
+
 (define (analyze exp)
   (cond
     ((self-evaluating? exp) (analyze-self-evaluating exp))
