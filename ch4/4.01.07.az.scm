@@ -257,11 +257,12 @@
     ; `procedure-body`, `procedure-parameters`, `procedure-environment`,
     ; `extend-environment` from 4.01.03.env.scm
     ((compound-procedure? proc)
-     (procedure-body proc)
-     (extend-environment
-       (procedure-parameters proc)
-       args
-       (procedure-environment proc)
+     ((procedure-body proc) ; proc
+      (extend-environment ; env
+        (procedure-parameters proc)
+        args
+        (procedure-environment proc)
+      )
      )
     )
 
