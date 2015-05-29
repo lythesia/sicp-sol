@@ -30,7 +30,7 @@
 ;;  1
 ;; )
 
-;; b) regular order(so if here is an exact procedure or not? me prefer former)
+;; b) regular order(so `if` here is an exact procedure or not? me prefer former)
 ;;
 ;; (factorial 5) [1] =>
 ;; [1]:
