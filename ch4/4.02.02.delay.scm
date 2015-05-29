@@ -140,4 +140,4 @@
   )
 )
 
-(driver-loop)
+(if (not (defined? 'dont-run-lazy)) (driver-loop))
