@@ -1,0 +1,21 @@
+(include "4.03.02.common.scm") ; xor
+(define (ranking)
+  (let
+    ((betty (amb 1 2 3 4 5))
+     (ethel (amb 1 2 3 4 5))
+     (jone  (amb 1 2 3 4 5))
+     (ketty (amb 1 2 3 4 5))
+     (mary  (amb 1 2 3 4 5)))
+    (require (distinct? (list betty ethel jone ketty mary)))
+    (require (xor (= ketty 2) (= betty 3)))
+    (require (xor (= ethel 1) (= jone  2)))
+    (require (xor (= jone  3) (= ethel 5)))
+    (require (xor (= ketty 2) (= mary  4)))
+    (require (xor (= mary  4) (= betty 1)))
+    (map
+      (lambda (name rank) (list name rank))
+      '(betty ethel jone ketty mary)
+      (list betty ethel jone ketty mary)
+    )
+  )
+)

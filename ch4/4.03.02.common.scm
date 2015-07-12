@@ -19,3 +19,10 @@
 )
 
 (define (!= x y) (not (= x y)))
+
+(define (xor x y)
+  (or
+    (and x (not y))
+    (and y (not x))
+  )
+)
