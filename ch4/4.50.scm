@@ -1,0 +1,33 @@
+; Rptx
+(define (analyze-ramb exp)
+  ; count.times do: keep extract "first" item from "rest" to the very front
+  (define (list-ref-and-delete ref lst)
+    (define (loop count prev-items rest-items)
+      (if (= count 0)
+        (cons (car rest-items) (append prev-items (cdr rest-items)))
+        (loop (- count 1) (cons (car rest-items) prev-items) (cdr rest-items))
+      )
+    )
+    (if (null? lst)
+      '()
+      (loop ref '() lst)
+    )
+  )
+  (let ((c-procs (map analyze (amb-choices exp))))
+    (lambda (env succeed fail)
+      (define (try-next choices)
+        (if (null? choices)
+          (fail)
+          (let ((shuffled (list-ref-and-delete (random (length choices)) choices)))
+            ((car shuffled)
+               env
+               succeed
+               (lambda () (try-next (cdr shuffled))) ; if not succeed, try next choice
+            )
+          )
+        )
+      )
+      (try-next c-procs)
+    )
+  )
+)
