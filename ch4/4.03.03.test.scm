@@ -1,3 +1,16 @@
+(define (require p)
+  (if (not p) (amb))
+)
+
+(define (distinct? lst)
+  (cond
+    ((null? lst) true)
+    ((null? (cdr lst)) true)
+    ((member (car lst) (cdr lst)) false)
+    (else (distinct? (cdr lst)))
+  )
+)
+
 (define (oyago)
   ; (otousan musume)
   (let
@@ -12,17 +25,18 @@
       (cond
         ((eq? Hall 'Gabrelle) (eq? 'Rosalind Parker))
         ((eq? Downing 'Gabrelle) (eq? 'Melissa Parker)) ; though this is false
-        (else #f)
+        (else false)
       )
     )
     (require (distinct? (list Moore Barnacle Hall Downing Parker)))
-    (map
-      (lambda (otousan musume) (list otousan musume))
-      '(Moore Barnacle Hall Downing Parker)
-      (list Moore Barnacle Hall Downing Parker)
+    (list
+      (list 'Barnacle Barnacle)
+      (list 'Moore Moore)
+      (list 'Hall Hall)
+      (list 'Downing Downing)
+      (list 'Parker Parker)
     )
   )
 )
 
-;; what if Ann's father is not Moore:
-;; there'll be one more solution, (Moore Gabrelle) (Barnacle Melissa) (Hall Mary) (Downing Rosalind) (Parker Lorna)
+(oyago)

@@ -274,6 +274,7 @@
     (list '< <)
     (list '<= <=)
     (list '>= >=)
+    (list 'not not)
     (list 'eq? eq?)
     (list 'remainder remainder)
     (list 'display display)
@@ -282,6 +283,7 @@
     (list 'write write)
     (list 'list list)
     (list 'length length)
+    (list 'member member)
     (list 'exit (lambda () (set! exit-flag 1) 'bye~))
     ; .. other primitives
   )
