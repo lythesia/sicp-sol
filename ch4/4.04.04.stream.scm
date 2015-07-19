@@ -3,7 +3,7 @@
 (define the-empty-stream (stream))
 
 (define (stream-append-delayed s1 delayed-s2)
-  (if (stream-null? s1) ; non-stream(e.g frame) is false
+  (if (stream-null? s1)
     (force delayed-s2)
     (stream-cons
       (stream-car s1)
@@ -13,7 +13,7 @@
 )
 
 (define (interleave-delayed s1 delayed-s2)
-  (if (stream-null? s1) ; non-stream(e.g frame) is false
+  (if (stream-null? s1)
     (force delayed-s2)
     (stream-cons
       (stream-car s1)
@@ -29,7 +29,7 @@
   (if (stream-null? s)
     the-empty-stream
     (interleave-delayed
-      (stream-car s) ; so element in s maybe a stream, too?
+      (stream-car s) ; it's also a stream
       (delay (flatten-stream (stream-cdr s)))
     )
   )

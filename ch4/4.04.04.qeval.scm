@@ -192,7 +192,7 @@
   (let ((match-result (pattern-match query-pat assertion query-frame)))
     (if (eq? match-result 'failed)
       the-empty-stream
-      (singleton-stream match-result)
+      (singleton-stream match-result) ; note this, we get a match result in form of **STREAM**!
     )
   )
 )
@@ -583,6 +583,7 @@
 (initialize-data-base microshaft-data-base)
 ;; }}
 
+;; condition
 (if (not (defined? 'dont-run-qeval))
   (query-driver-loop)
 )
