@@ -1,9 +1,12 @@
+(include "4.04.04.stream.scm")
+(include "4.04.04.table.scm")
+
 (define input-prompt ";;; Query input:")
 (define output-prompt ";;; Query results:")
 
 (define (query-driver-loop)
   (prompt-for-input input-prompt)
-  (let ((q query-syntax-process (read)))
+  (let ((q (query-syntax-process (read))))
     (cond
       ((assertion-to-be-added? q)
        (add-rule-or-assertion! (add-assertion-body q))
@@ -21,6 +24,17 @@
           )
         )
         (query-driver-loop)
+      )
+    )
+  )
+)
+
+(define (contract-question-mark variable)
+  (string->symbol
+    (string-append "?"
+      (if (number? (cadr variable))
+        (string-append (symbol->string (caddr variable)) "-" (number->string (cadr variable))) ; (? (2 x)) -> "?x-2"
+        (symbol->string (cadr variable))
       )
     )
   )
@@ -49,16 +63,103 @@
       (else exp)
     )
   )
+  (copy exp)
 )
 
-(define (qeval query frame-stream)
-  (let ((q-proc (get (type query) 'qeval)))
+(define (qeval query frame-stream)  ; e.g: query => (job (? x) (? y))
+  (let ((q-proc (get (type query) 'qeval))) ; (get 'job 'qeval) => nil, since it's not compound(like and, or, not ..)
     (if q-proc
       (q-proc (contents query) frame-stream)
-      (simple-query query frame-stream)
+      (simple-query query frame-stream) ; non-compound gets here
     )
   )
 )
+
+;; {{ parse
+(define (tagged-list? exp sym)
+  (if (pair? exp) (eq? (car exp) sym) #f)
+)
+(define (var? exp) (tagged-list? exp '?))
+(define (constant-symbol? exp) (symbol? exp))
+
+
+(define (type exp)
+  (if (pair? exp)
+    (car exp)
+    (error "Unknown expression TYPE" exp)
+  )
+)
+(define (contents exp)
+  (if (pair? exp)
+    (cdr exp)
+    (error "Unknown expression CONTENTS" exp)
+  )
+)
+
+; assertion
+(define (assertion-to-be-added? exp)
+  (eq? (type exp) 'assert!)
+)
+(define (add-assertion-body exp)
+  (car (contents exp))
+)
+
+; rule
+; and
+(define (empty-conjunction? exps) (null? exps))
+(define (first-conjunct exps) (car exps))
+(define (rest-conjuncts exps) (cdr exps))
+
+; or
+(define (empty-disjunction? exps) (null? exps))
+(define (first-disjunct exps) (car exps))
+(define (rest-disjuncts exps) (cdr exps))
+
+; not
+(define (negated-query exps) (car exps))
+(define (predicate exps) (car exps))
+(define (args exps) (cdr exps))
+
+(define (rule? statement) (tagged-list? statement 'rule))
+(define (conclusion rule) (cadr rule))
+(define (rule-body rule)
+  (if (null? (cddr rule))
+    '(always-true)
+    (caddr rule)
+  )
+)
+
+; conv
+(define (query-syntax-process exp) (map-over-symbols expand-question-mark exp))
+(define (map-over-symbols proc exp)
+  (cond
+    ((pair? exp)
+     (cons (map-over-symbols proc (car exp)) (map-over-symbols proc (cdr exp))) ; ok, it's recursive into element
+    )
+    ((symbol? exp) (proc exp))
+    (else exp)
+  )
+)
+(define (expand-question-mark symbol)
+  (let ((chars (symbol->string symbol)))
+    (if (string=? (substring chars 0 1) "?")
+      (list
+        '?
+        (string->symbol (substring chars 1 (string-length chars)))
+      )
+      symbol
+    )
+  )
+)
+
+; binding
+(define (binding-variable binding) (car binding))
+(define (binding-value binding) (cdr binding))
+(define (binding-in-frame variable frame) (assoc variable frame))
+(define (extend variable value frame) (cons (make-binding variable value) frame))
+(define (make-binding variable value) (cons variable value))
+;; }}
+
 
 ;; {{ simple query
 ; check:
@@ -157,12 +258,21 @@
     (define (tree-walk exp)
       (cond
         ((var? exp) (make-new-variable exp rule-application-id))
-        ((pair? exp) (cons (tree-walk (car exp) (tree-walk (cdr exp)))))
+        ((pair? exp) (cons (tree-walk (car exp)) (tree-walk (cdr exp))))
         (else exp)
       )
     )
     (tree-walk rule)
   )
+)
+
+(define (new-rule-application-id)
+  (set! rule-counter (+ 1 rule-counter))
+  rule-counter
+)
+
+(define (make-new-variable var rule-application-id)
+  (cons '? (cons rule-application-id (cdr var))) ; (? (2  x))
 )
 
 ; get unified may-be-extend frame
@@ -205,7 +315,7 @@
        (if (equal? var e)
          #t
          (let ((b (binding-in-frame e frame))) ; not var but compound pattern
-           (if b (tree-walk (binding-value b) #f)) ; check it recursively
+           (if b (tree-walk (binding-value b)) #f) ; check it recursively
          )
        )
       )
@@ -252,14 +362,14 @@
 (define (add-assertion! assertion)
   (store-assertion-in-index assertion)
   (let ((old-assertions THE-ASSERTIONS))
-    (set! THE-ASSERTIONS (cons-stream assertion old-assertions))
+    (set! THE-ASSERTIONS (stream-cons assertion old-assertions))
     'ok
   )
 )
 (define (add-rule! rule)
   (store-rule-in-index rule)
   (let ((old-rules THE-RULES))
-    (set! THE-RULES (cons-stream rule old-rules))
+    (set! THE-RULES (stream-cons rule old-rules))
     'ok
   )
 )
@@ -267,17 +377,17 @@
   (if (indexable? assertion)
     (let ((key (index-key-of assertion)))
       (let ((current-assertion-stream (get-stream key 'assertion-stream)))
-        (put key 'assertion-stream (cons-stream assertion current-assertion-stream))
+        (put key 'assertion-stream (stream-cons assertion current-assertion-stream))
       )
     )
   )
 )
-(define (store-rule-in-index rule)
+(define (store-rule-in-index rule) ; <key, 'rule-stream> => (rule [promise..])
   (let ((pattern (conclusion rule)))
     (if (indexable? pattern)
       (let ((key (index-key-of pattern)))
         (let ((current-rule-stream (get-stream key 'rule-stream)))
-          (put key 'rule-stream (cons-stream rule current-rule-stream))
+          (put key 'rule-stream (stream-cons rule current-rule-stream))
         )
       )
     )
@@ -300,16 +410,16 @@
 ;; }
 ;; }}
 
+
 (define (conjoin conjuncts frame-stream)
   (if (empty-conjunction? conjuncts)
     frame-stream
     (conjoin (rest-conjuncts conjuncts) (qeval (first-conjunct conjuncts) frame-stream))
   )
 )
-(put 'and 'qeval conjoin)
 
 (define (disjoin disjuncts frame-stream)
-  (if (empty-disjuncts? disjuncts)
+  (if (empty-disjunction? disjuncts)
     the-empty-stream
     (interleave-delayed
       (qeval (first-disjunct disjuncts) frame-stream)
@@ -317,7 +427,6 @@
     )
   )
 )
-(put 'or 'qeval disjoin)
 
 (define (negate operands frame-stream)
   (stream-flatmap
@@ -330,7 +439,6 @@
     frame-stream
   )
 )
-(put 'not 'qeval negate)
 
 (define (lisp-value call frame-stream)
   (stream-flatmap
@@ -343,10 +451,138 @@
     frame-stream
   )
 )
-(put 'list-value 'qeval list-value)
 (define (execute exp)
-  (apply (eval (predicate exp) user-initial-environment) (args exp))
+  (apply
+    (eval (predicate exp)) ; (eval (...) user-initial-environment)
+    (args exp)
+  )
 )
 
 (define (always-true ignore frame-stream) frame-stream)
-(put 'always-true 'qeval always-true)
+
+;; {{ env
+; the-empty-stream is in stream.scm
+(define rule-counter 0)
+(define get '())
+(define put '())
+(define (initialize-data-base rules-and-assertions)
+  (define (deal-out r-and-a rules assertions)
+    (cond
+      ((null? r-and-a)
+       (set! THE-ASSERTIONS (list->stream assertions))
+       (set! THE-RULES (list->stream rules)) ; 2. when no rule to cons, bind to THE-RULES
+       'done
+      )
+      (else
+        (let ((s (query-syntax-process (car r-and-a))))
+          (cond
+            ((rule? s)  ; s: list [rule (same (? x) (? x))]
+             (store-rule-in-index s)
+             (deal-out (cdr r-and-a) (cons s rules) assertions) ; 1. cons rules together
+            )
+            (else       ; s: list [job (some-name) (some-job)]
+             (store-assertion-in-index s)
+             (deal-out (cdr r-and-a) rules (cons s assertions))
+            )
+          )
+        )
+      )
+    )
+  )
+  (let ((operation-table (make-table)))
+    (set! get (operation-table 'lookup-proc))
+    (set! put (operation-table 'insert-proc!))
+  )
+  (put 'and 'qeval conjoin)
+  (put 'or 'qeval disjoin)
+  (put 'not 'qeval negate)
+  (put 'lisp-value 'qeval lisp-value)
+  (put 'always-true 'qeval always-true)
+  (deal-out rules-and-assertions '() '())
+)
+;; }}
+
+;; {{ init
+(define microshaft-data-base
+  '(
+    ;; from section 4.4.1
+    (address (Bitdiddle Ben) (Slumerville (Ridge Road) 10))
+    (job (Bitdiddle Ben) (computer wizard))
+    (salary (Bitdiddle Ben) 60000)
+
+    (address (Hacker Alyssa P) (Cambridge (Mass Ave) 78))
+    (job (Hacker Alyssa P) (computer programmer))
+    (salary (Hacker Alyssa P) 40000)
+    (supervisor (Hacker Alyssa P) (Bitdiddle Ben))
+
+    (address (Fect Cy D) (Cambridge (Ames Street) 3))
+    (job (Fect Cy D) (computer programmer))
+    (salary (Fect Cy D) 35000)
+    (supervisor (Fect Cy D) (Bitdiddle Ben))
+
+    (address (Tweakit Lem E) (Boston (Bay State Road) 22))
+    (job (Tweakit Lem E) (computer technician))
+    (salary (Tweakit Lem E) 25000)
+    (supervisor (Tweakit Lem E) (Bitdiddle Ben))
+
+    (address (Reasoner Louis) (Slumerville (Pine Tree Road) 80))
+    (job (Reasoner Louis) (computer programmer trainee))
+    (salary (Reasoner Louis) 30000)
+    (supervisor (Reasoner Louis) (Hacker Alyssa P))
+
+    (supervisor (Bitdiddle Ben) (Warbucks Oliver))
+
+    (address (Warbucks Oliver) (Swellesley (Top Heap Road)))
+    (job (Warbucks Oliver) (administration big wheel))
+    (salary (Warbucks Oliver) 150000)
+
+    (address (Scrooge Eben) (Weston (Shady Lane) 10))
+    (job (Scrooge Eben) (accounting chief accountant))
+    (salary (Scrooge Eben) 75000)
+    (supervisor (Scrooge Eben) (Warbucks Oliver))
+
+    (address (Cratchet Robert) (Allston (N Harvard Street) 16))
+    (job (Cratchet Robert) (accounting scrivener))
+    (salary (Cratchet Robert) 18000)
+    (supervisor (Cratchet Robert) (Scrooge Eben))
+
+    (address (Aull DeWitt) (Slumerville (Onion Square) 5))
+    (job (Aull DeWitt) (administration secretary))
+    (salary (Aull DeWitt) 25000)
+    (supervisor (Aull DeWitt) (Warbucks Oliver))
+
+    (can-do-job (computer wizard) (computer programmer))
+    (can-do-job (computer wizard) (computer technician))
+
+    (can-do-job (computer programmer)
+                (computer programmer trainee))
+
+    (can-do-job (administration secretary)
+                (administration big wheel))
+
+    (rule (lives-near ?person-1 ?person-2)
+          (and (address ?person-1 (?town . ?rest-1))
+               (address ?person-2 (?town . ?rest-2))
+               (not (same ?person-1 ?person-2))))
+
+    (rule (same ?x ?x))
+
+    (rule (wheel ?person)
+          (and (supervisor ?middle-manager ?person)
+               (supervisor ?x ?middle-manager)))
+
+    (rule (outranked-by ?staff-person ?boss)
+          (or (supervisor ?staff-person ?boss)
+              (and (supervisor ?staff-person ?middle-manager)
+                   (outranked-by ?middle-manager ?boss))))
+  )
+)
+
+;; Do following to reinit the data base from microshaft-data-base
+;; in Scheme (not in the query driver loop)
+(initialize-data-base microshaft-data-base)
+;; }}
+
+(if (not (defined? 'dont-run-qeval))
+  (query-driver-loop)
+)
