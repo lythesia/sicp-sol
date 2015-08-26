@@ -1,13 +1,15 @@
 (define (make-execution-procedure inst labels machine pc flag stack ops)
   (let ((op (car inst)))
-    ((eq? op 'assign) (make-assign inst machine labels ops pc))   ; need `op` to compute
-    ((eq? op 'test) (make-test inst machine labels ops flag pc))  ; need `op` to set `flag`
-    ((eq? op 'branch) (make-branch inst machine labels flag pc))  ; need check `flag`
-    ((eq? op 'goto) (make-goto inst machine labels pc))
-    ((eq? op 'save) (make-save inst machine stack pc))
-    ((eq? op 'restore) (make-restore inst machine stack pc))
-    ((eq? op 'perform) (make-perform inst machine labels ops pc))
-    (else (error "Unknown instruction type -- ASSEMBLE" op))
+    (cond
+      ((eq? op 'assign) (make-assign inst machine labels ops pc))   ; need `op` to compute
+      ((eq? op 'test) (make-test inst machine labels ops flag pc))  ; need `op` to set `flag`
+      ((eq? op 'branch) (make-branch inst machine labels flag pc))  ; need check `flag`
+      ((eq? op 'goto) (make-goto inst machine labels pc))
+      ((eq? op 'save) (make-save inst machine stack pc))
+      ((eq? op 'restore) (make-restore inst machine stack pc))
+      ; ((eq? op 'perform) (make-perform inst machine labels ops pc))
+      (else (error "Unknown instruction type -- ASSEMBLE" op))
+    )
   )
 )
 ; (assign <target> proc...)
@@ -16,7 +18,7 @@
     (let
       ((value-proc
          (if (operation-exp? value-exp)
-           (make-operation-exp value-exp machine labels operations)
+           (make-operation-exp value-exp machine labels ops)
            (make-primitive-exp (car value-exp) machine labels)
          )
        ))
@@ -50,10 +52,27 @@
 (define (register-exp? exp) (tagged-list? exp 'reg))
 (define register-exp-reg cadr)
 ; (op ..) [operands]
-(define (make-operation-exp exp machine lables operations)
+; (define (make-operation-exp exp machine lables operations)
+;   (let
+;     ((op (lookup-operation (operation-exp-op exp) operations))
+;      (a-procs (map (lambda (e) (make-primitive-exp e machine labels)) (operation-exp-operands exp))))
+;     (lambda () (apply op (map (lambda (p) (p)) a-procs)))
+;   )
+; )
+;; 5.09.scm
+(define (make-operation-exp exp machine labels operations)
   (let
     ((op (lookup-operation (operation-exp-op exp) operations))
-     (a-procs (map (lambda (e) (make-primitive-exp e machine labels)) (operation-exp-operands exp))))
+     (a-procs
+       (map
+         (lambda (e)
+           (if (label-exp? e)
+             (error "cannot operate on label -- MAKE-OPERATION-EXP" e)
+             (make-primitive-exp e machine labels))
+           )
+         (operation-exp-operands exp)
+       )
+     ))
     (lambda () (apply op (map (lambda (p) (p)) a-procs)))
   )
 )
@@ -65,7 +84,7 @@
   (let ((val (assoc symbol operations)))
     (if val
       (cadr val)
-      (else (error "Unknown operation -- ASSEMBLE" symbol))
+      (error "Unknown operation -- ASSEMBLE" symbol)
     )
   )
 )
@@ -78,7 +97,7 @@
   (let ((condition (test-condition inst)))
     (if (operation-exp? condition)
       (let ((condition-proc (make-operation-exp condition machine labels operations)))
-        (lambda () (set-contents! flag (condition-proc) (advance-pc pc)))
+        (lambda () (set-contents! flag (condition-proc)) (advance-pc pc))
       )
       (error "Bad TEST instruction -- ASSEMBLE" inst) ; must be (op ..) [operands]
     )
@@ -94,7 +113,7 @@
         (lambda ()
           (if (get-contents flag)
             (set-contents! pc insts)  ; 2. since here we use it to set pc
-            (advance-pc)
+            (advance-pc pc)
           )
         )
       )

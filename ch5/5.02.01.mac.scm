@@ -2,7 +2,7 @@
 (define (make-machine register-names ops controller-text) ; text = code
   (let ((machine (make-new-machine)))
     (for-each
-      (lambda (register-name) ((machine 'allocate-register) registername))
+      (lambda (register-name) ((machine 'allocate-register) register-name))
       register-names
     )
     ((machine 'install-operations) ops)
@@ -49,7 +49,7 @@
       (define (dispatch message)
         (cond
           ((eq? message 'start) (set-contents! pc the-instruction-sequence) (execute))
-          ((eq? message 'install-instruction-sequnce) (lambda (seq) (set! the-instruction-sequence seq)))
+          ((eq? message 'install-instruction-sequence) (lambda (seq) (set! the-instruction-sequence seq)))
           ((eq? message 'allocate-register) allocate-register)
           ((eq? message 'get-register) lookup-register)
           ((eq? message 'install-operations) (lambda (ops) (set! the-ops (append the-ops ops))))
@@ -71,14 +71,14 @@
 (define (get-register-contents machine register-name)
   (get-contents (get-register machine register-name))
 )
-(define (set-register-contents machine register-name value)
+(define (set-register-contents! machine register-name value)
   (set-contents! (get-register machine register-name) value)
 )
 
 ;; register (why need `name' ?)
 (define (make-register name)
   (let ((contents '*unassigned*))
-    (define (disptach message)
+    (define (dispatch message)
       (cond
         ((eq? message 'get) contents)
         ((eq? message 'set) (lambda (value) (set! contents value)))
