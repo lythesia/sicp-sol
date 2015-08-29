@@ -18,7 +18,8 @@
      (the-instruction-sequence '())
     )
     (let
-      ((the-ops (list (list 'initialize-stack (lambda () (stack 'initialize)))))
+      ((the-ops (list (list 'initialize-stack (lambda () (stack 'initialize)))
+                      (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
        (register-table (list (list 'pc pc) (list 'flag flag)))
       )
       (define (allocate-register name)
@@ -93,31 +94,48 @@
 
 ;; stack
 (define (make-stack)
-  (let ((s '()))
+  (let ((s '())
+        (number-pushes 0)
+        (max-depth 0)
+        (current-depth 0))
+    ; push
     (define (push x)
       (set! s (cons x s))
+      (set! number-pushes (+ number-pushes 1))
+      (set! current-depth (+ current-depth 1))
+      (set! max-depth (max max-depth current-depth))
     )
-
+    ; pop
     (define (pop)
       (if (null? s)
         (error "Empty stack -- POP")
         (let ((top (car s)))
           (set! s (cdr s))
+          (set! current-depth (- current-depth 1))
           top
         )
       )
     )
-
+    ; init
     (define (initialize)
       (set! s '())
+      (set! number-pushes 0)
+      (set! max-depth 0)
+      (set! current-depth 0)
       'done
     )
-
+    ; profile
+    (define (profile)
+      (display "\ntotal-pushes: ")(display number-pushes)
+      (display ", maximum-depth: ")(display max-depth)
+      (newline)
+    )
     (define (dispatch message)
       (cond
         ((eq? message 'push) push)
         ((eq? message 'pop) (pop))
         ((eq? message 'initialize) (initialize))
+        ((eq? message 'print-statistics) (profile))
         (else (error "Unknown request -- STAKC" message))
       )
     )

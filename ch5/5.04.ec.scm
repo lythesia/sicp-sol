@@ -16,6 +16,8 @@ repl
   (goto (label eval-dispatch))
 
 print-result
+  ,(if (defined? 'profile-stack)
+     '(perform (op print-stack-statistics)))
   (perform (op announce-output) (const ";;; EC-Eval value:"))
   (perform (op user-print) (reg val))
   (goto (label repl))
