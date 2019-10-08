@@ -4,4 +4,4 @@
 #   perl-rename
 
 # rename <.x> to <.0x>
-find . -regex ".*\.[0-9]\..*" -execdir perl-rename 's/\.([0-9])/.0/g' {} \;
+find . -regex ".*\.[0-9]\..*" -execdir perl-rename 's/\.([0-9])/.0\1/g' {} \;
